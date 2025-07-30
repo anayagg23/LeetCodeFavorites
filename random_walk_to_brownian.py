@@ -1,0 +1,252 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from matplotlib.patches import Rectangle
+import seaborn as sns
+
+# Set style for better looking plots
+plt.style.use('seaborn-v0_8-darkgrid')
+sns.set_palette("husl")
+
+class RandomWalkToBrownian:
+    def __init__(self, T=1.0, num_steps_list=[100, 500, 1000, 2000, 5000], num_paths=50):
+        """
+        Initialize the animation parameters.
+        
+        Args:
+            T: Time horizon (default 1.0)
+            num_steps_list: List of number of steps for different approximations
+            num_paths: Number of random walk paths to simulate
+        """
+        self.T = T
+        self.num_steps_list = num_steps_list
+        self.num_paths = num_paths
+        self.colors = plt.cm.tab10(np.linspace(0, 1, len(num_steps_list)))
+        
+        # Generate all random walks and Brownian motion paths
+        self.generate_paths()
+        
+    def generate_paths(self):
+        """Generate random walk paths and Brownian motion for comparison."""
+        np.random.seed(42)  # For reproducibility
+        
+        self.random_walks = {}
+        self.time_grids = {}
+        
+        # Generate scaled random walks for different step sizes
+        for n in self.num_steps_list:
+            dt = self.T / n
+            time_grid = np.linspace(0, self.T, n + 1)
+            
+            # Generate random steps (+1 or -1)
+            steps = np.random.choice([-1, 1], size=(self.num_paths, n))
+            
+            # Scale the steps: divide by sqrt(n) and multiply by sqrt(T)
+            # This gives the correct scaling for convergence to Brownian motion
+            scaled_steps = steps * np.sqrt(dt)
+            
+            # Compute cumulative sum to get the walk
+            walks = np.zeros((self.num_paths, n + 1))
+            walks[:, 1:] = np.cumsum(scaled_steps, axis=1)
+            
+            self.random_walks[n] = walks
+            self.time_grids[n] = time_grid
+        
+        # Generate true Brownian motion paths for comparison
+        finest_n = max(self.num_steps_list)
+        dt_brownian = self.T / finest_n
+        brownian_increments = np.random.normal(0, np.sqrt(dt_brownian), 
+                                             size=(self.num_paths, finest_n))
+        
+        self.brownian_paths = np.zeros((self.num_paths, finest_n + 1))
+        self.brownian_paths[:, 1:] = np.cumsum(brownian_increments, axis=1)
+        self.brownian_time = np.linspace(0, self.T, finest_n + 1)
+        
+    def create_animation(self):
+        """Create the main animation showing convergence."""
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
+        fig.suptitle('Convergence of Random Walks to Brownian Motion\n(Donsker\'s Theorem)', 
+                    fontsize=16, fontweight='bold')
+        
+        # Initialize plots
+        lines_rw = {}  # Random walk lines
+        lines_bm = {}  # Brownian motion reference lines
+        
+        # Setup subplots
+        axes = [ax1, ax2, ax3, ax4]
+        subplot_titles = [
+            f'n = {self.num_steps_list[0]} steps',
+            f'n = {self.num_steps_list[1]} steps', 
+            f'n = {self.num_steps_list[2]} steps',
+            'Comparison with True Brownian Motion'
+        ]
+        
+        for i, ax in enumerate(axes):
+            ax.set_xlim(0, self.T)
+            ax.set_ylim(-3, 3)
+            ax.set_xlabel('Time')
+            ax.set_ylabel('Position')
+            ax.set_title(subplot_titles[i])
+            ax.grid(True, alpha=0.3)
+            
+            if i < 3:  # First three subplots show individual random walks
+                n = self.num_steps_list[i]
+                lines_rw[i] = []
+                for j in range(min(10, self.num_paths)):  # Show only 10 paths for clarity
+                    line, = ax.plot([], [], alpha=0.7, linewidth=1.5)
+                    lines_rw[i].append(line)
+            else:  # Fourth subplot compares with Brownian motion
+                lines_rw[i] = []
+                lines_bm[i] = []
+                # Show fewer paths for the comparison plot
+                for j in range(5):
+                    line_rw, = ax.plot([], [], alpha=0.8, linewidth=2, 
+                                     label=f'Random Walk (n={self.num_steps_list[-1]})' if j == 0 else "")
+                    line_bm, = ax.plot([], [], alpha=0.8, linewidth=2, linestyle='--',
+                                     label='True Brownian Motion' if j == 0 else "")
+                    lines_rw[i].append(line_rw)
+                    lines_bm[i].append(line_bm)
+                ax.legend()
+        
+        # Animation function
+        def animate(frame):
+            # Calculate which step we're at for each subplot
+            max_steps = max([len(self.time_grids[n]) for n in self.num_steps_list[:3]])
+            current_step = int(frame * max_steps / 200)  # 200 frames total
+            
+            for i in range(3):  # First three subplots
+                n = self.num_steps_list[i]
+                time_grid = self.time_grids[n]
+                walks = self.random_walks[n]
+                
+                # Calculate how many points to show based on the frame
+                points_to_show = min(current_step + 1, len(time_grid))
+                
+                for j, line in enumerate(lines_rw[i]):
+                    if j < len(walks):
+                        line.set_data(time_grid[:points_to_show], 
+                                    walks[j, :points_to_show])
+            
+            # Fourth subplot - comparison
+            n_comparison = self.num_steps_list[-1]
+            time_grid_comp = self.time_grids[n_comparison]
+            walks_comp = self.random_walks[n_comparison]
+            
+            points_to_show_comp = min(current_step + 1, len(time_grid_comp))
+            brownian_points = min(current_step + 1, len(self.brownian_time))
+            
+            for j in range(len(lines_rw[3])):
+                # Random walk
+                lines_rw[3][j].set_data(time_grid_comp[:points_to_show_comp],
+                                      walks_comp[j, :points_to_show_comp])
+                # Brownian motion
+                lines_bm[3][j].set_data(self.brownian_time[:brownian_points],
+                                      self.brownian_paths[j, :brownian_points])
+            
+            return [line for sublist in lines_rw.values() for line in sublist] + \
+                   [line for sublist in lines_bm.values() for line in sublist]
+        
+        # Create animation
+        anim = animation.FuncAnimation(fig, animate, frames=200, interval=50, 
+                                     blit=False, repeat=True)
+        
+        plt.tight_layout()
+        return fig, anim
+    
+    def create_convergence_demo(self):
+        """Create a static plot showing the convergence for different n values."""
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+        
+        # Left plot: Different approximations
+        ax1.set_title('Random Walk Approximations\n(Different Number of Steps)', fontsize=14)
+        ax1.set_xlabel('Time')
+        ax1.set_ylabel('Position')
+        ax1.grid(True, alpha=0.3)
+        
+        # Show one path for each approximation level
+        for i, n in enumerate(self.num_steps_list):
+            time_grid = self.time_grids[n]
+            walk = self.random_walks[n][0]  # First path
+            ax1.plot(time_grid, walk, linewidth=2, alpha=0.8, 
+                    label=f'n = {n}', color=self.colors[i])
+        
+        ax1.legend()
+        ax1.set_ylim(-3, 3)
+        
+        # Right plot: Distribution comparison at fixed time
+        ax2.set_title('Distribution at t = 0.5\n(Convergence to Normal)', fontsize=14)
+        ax2.set_xlabel('Position')
+        ax2.set_ylabel('Density')
+        
+        t_fixed = 0.5
+        for i, n in enumerate(self.num_steps_list):
+            time_grid = self.time_grids[n]
+            # Find index closest to t_fixed
+            idx = np.argmin(np.abs(time_grid - t_fixed))
+            positions = self.random_walks[n][:, idx]
+            
+            ax2.hist(positions, bins=20, alpha=0.6, density=True, 
+                    label=f'n = {n}', color=self.colors[i])
+        
+        # Overlay theoretical normal distribution
+        x_theory = np.linspace(-3, 3, 100)
+        y_theory = (1/np.sqrt(2*np.pi*t_fixed)) * np.exp(-x_theory**2/(2*t_fixed))
+        ax2.plot(x_theory, y_theory, 'k--', linewidth=3, 
+                label='Theoretical N(0, t)')
+        
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        return fig
+
+def main():
+    """Main function to create and display the animations."""
+    print("Creating Random Walk to Brownian Motion Animation...")
+    print("This demonstrates Donsker's Theorem (Functional Central Limit Theorem)")
+    print("\nKey insight: As n → ∞, the scaled random walk S_n(t) = S_{⌊nt⌋}/√n")
+    print("converges in distribution to Brownian motion B(t)")
+    
+    # Create the animation object
+    rw_brownian = RandomWalkToBrownian(T=1.0, num_steps_list=[50, 200, 1000, 5000])
+    
+    # Create the main animation
+    print("\nGenerating main animation...")
+    fig_anim, anim = rw_brownian.create_animation()
+    
+    # Create convergence demonstration
+    print("Generating convergence demonstration...")
+    fig_conv = rw_brownian.create_convergence_demo()
+    
+    # Save the animation
+    print("Saving animation as 'random_walk_brownian_motion.gif'...")
+    try:
+        anim.save('random_walk_brownian_motion.gif', writer='pillow', fps=20, dpi=100)
+        print("✓ Animation saved successfully!")
+    except Exception as e:
+        print(f"Note: Could not save animation as GIF: {e}")
+        print("You can still view the animation in the interactive plot.")
+    
+    # Save the static convergence plot
+    fig_conv.savefig('convergence_demonstration.png', dpi=300, bbox_inches='tight')
+    print("✓ Convergence demonstration saved as 'convergence_demonstration.png'")
+    
+    # Display the plots
+    plt.show()
+    
+    print("\n" + "="*60)
+    print("MATHEMATICAL BACKGROUND:")
+    print("="*60)
+    print("Donsker's Theorem states that if S_n is a random walk with ±1 steps,")
+    print("then the scaled process:")
+    print("    W_n(t) = S_{⌊nt⌋} / √n")
+    print("converges weakly to standard Brownian motion as n → ∞.")
+    print("\nKey properties demonstrated:")
+    print("• Continuous paths (in the limit)")
+    print("• Normal increments") 
+    print("• Independent increments")
+    print("• Quadratic variation = t")
+    print("="*60)
+
+if __name__ == "__main__":
+    main()
