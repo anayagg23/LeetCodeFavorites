@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Walk to Brownian Motion Convergence</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            font-family: 'Arial', sans-serif;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ecf0f1;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: #bdc3c7;
+            margin-bottom: 20px;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .simulation-row {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .canvas-label {
+            position: absolute;
+            top: 10px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 200px;
+        }
+
+        .info-panel {
+            width: 200px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .info-item {
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .controls {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            margin: 20px;
+        }
+
+        .control-btn {
+            margin: 0 10px;
+            padding: 12px 25px;
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .explanation {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px;
+            line-height: 1.6;
+        }
+
+        .formula {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            border-left: 4px solid #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">From Random Walk to Brownian Motion</div>
+        <div class="subtitle">Convergence through Scaling: Donsker's Theorem</div>
+    </div>
+
+    <div class="container">
+        <!-- Original Random Walk -->
+        <div class="simulation-row">
+            <div class="canvas-container">
+                <div class="canvas-label">Original Random Walk (±1 steps)</div>
+                <canvas id="canvas1"></canvas>
+            </div>
+            <div class="info-panel">
+                <div class="info-item">
+                    <span>Scale:</span>
+                    <span>n = 1</span>
+                </div>
+                <div class="info-item">
+                    <span>Step Size:</span>
+                    <span>±1</span>
+                </div>
+                <div class="info-item">
+                    <span>Time Scale:</span>
+                    <span>1</span>
+                </div>
+                <div class="info-item">
+                    <span>Position:</span>
+                    <span id="pos1">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scaled Random Walk n=10 -->
+        <div class="simulation-row">
+            <div class="canvas-container">
+                <div class="canvas-label">Scaled Walk: X(10t)/√10</div>
+                <canvas id="canvas2"></canvas>
+            </div>
+            <div class="info-panel">
+                <div class="info-item">
+                    <span>Scale:</span>
+                    <span>n = 10</span>
+                </div>
+                <div class="info-item">
+                    <span>Step Size:</span>
+                    <span>±1/√10</span>
+                </div>
+                <div class="info-item">
+                    <span>Time Scale:</span>
+                    <span>10</span>
+                </div>
+                <div class="info-item">
+                    <span>Position:</span>
+                    <span id="pos2">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scaled Random Walk n=100 -->
+        <div class="simulation-row">
+            <div class="canvas-container">
+                <div class="canvas-label">Scaled Walk: X(100t)/√100</div>
+                <canvas id="canvas3"></canvas>
+            </div>
+            <div class="info-panel">
+                <div class="info-item">
+                    <span>Scale:</span>
+                    <span>n = 100</span>
+                </div>
+                <div class="info-item">
+                    <span>Step Size:</span>
+                    <span>±1/√100</span>
+                </div>
+                <div class="info-item">
+                    <span>Time Scale:</span>
+                    <span>100</span>
+                </div>
+                <div class="info-item">
+                    <span>Position:</span>
+                    <span id="pos3">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Brownian Motion -->
+        <div class="simulation-row">
+            <div class="canvas-container">
+                <div class="canvas-label">Limiting Brownian Motion</div>
+                <canvas id="canvas4"></canvas>
+            </div>
+            <div class="info-panel">
+                <div class="info-item">
+                    <span>Scale:</span>
+                    <span>n → ∞</span>
+                </div>
+                <div class="info-item">
+                    <span>Step Size:</span>
+                    <span>Continuous</span>
+                </div>
+                <div class="info-item">
+                    <span>Time Scale:</span>
+                    <span>Continuous</span>
+                </div>
+                <div class="info-item">
+                    <span>Position:</span>
+                    <span id="pos4">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="control-btn" onclick="toggleAnimation()">Pause/Resume</button>
+        <button class="control-btn" onclick="resetAnimation()">Reset All</button>
+        <button class="control-btn" onclick="changeSpeed()">Speed: <span id="speedLabel">Normal</span></button>
+    </div>
+
+    <div class="explanation">
+        <h3>Mathematical Explanation</h3>
+        <p>This animation demonstrates <strong>Donsker's Theorem</strong> (Functional Central Limit Theorem), which shows how random walks converge to Brownian motion.</p>
+        
+        <div class="formula">
+            S<sub>n</sub>(t) = S<sub>⌊nt⌋</sub> / √n → B(t) as n → ∞
+        </div>
+        
+        <p><strong>Key Points:</strong></p>
+        <ul>
+            <li><strong>Space Scaling:</strong> Divide position by √n to normalize variance</li>
+            <li><strong>Time Scaling:</strong> Take n times as many steps in the same time interval</li>
+            <li><strong>Convergence:</strong> As n increases, the scaled random walk approaches Brownian motion</li>
+            <li><strong>Universal Limit:</strong> The limit is the same regardless of the step distribution (±1 here)</li>
+        </ul>
+    </div>
+
+    <script>
+        const canvases = [
+            document.getElementById('canvas1'),
+            document.getElementById('canvas2'),
+            document.getElementById('canvas3'),
+            document.getElementById('canvas4')
+        ];
+        
+        const contexts = canvases.map(canvas => {
+            canvas.width = 600;
+            canvas.height = 200;
+            return canvas.getContext('2d');
+        });
+        
+        const scales = [1, 10, 100, 1000]; // n values
+        const colors = ['#e74c3c', '#f39c12', '#2ecc71', '#3498db'];
+        
+        let time = 0;
+        let isRunning = true;
+        let animationSpeed = 1;
+        let speedLabels = ['Slow', 'Normal', 'Fast'];
+        let speedIndex = 1;
+        
+        // Store paths for each simulation
+        let paths = [[], [], [], []];
+        let positions = [0, 0, 0, 0];
+        
+        // Brownian motion parameters
+        let brownianPosition = 0;
+        let brownianPath = [];
+        
+        class RandomWalk {
+            constructor(scale, index) {
+                this.scale = scale;
+                this.index = index;
+                this.position = 0;
+                this.path = [];
+                this.stepCount = 0;
+            }
+            
+            step() {
+                const stepsPerFrame = this.scale * animationSpeed;
+                
+                for (let i = 0; i < stepsPerFrame; i++) {
+                    // Random step: +1 or -1
+                    const step = Math.random() < 0.5 ? -1 : 1;
+                    this.position += step;
+                    this.stepCount++;
+                }
+                
+                // Scale the position for display
+                const scaledPosition = this.position / Math.sqrt(this.scale);
+                this.path.push({
+                    x: time,
+                    y: scaledPosition
+                });
+                
+                // Keep path length manageable
+                if (this.path.length > 600) {
+                    this.path.shift();
+                }
+                
+                return scaledPosition;
+            }
+            
+            reset() {
+                this.position = 0;
+                this.path = [];
+                this.stepCount = 0;
+            }
+        }
+        
+        class BrownianMotion {
+            constructor() {
+                this.position = 0;
+                this.path = [];
+            }
+            
+            step(dt) {
+                // Brownian motion increment: N(0, dt)
+                const increment = Math.sqrt(dt * animationSpeed) * (Math.random() - 0.5) * 2 * Math.sqrt(2 * Math.log(2));
+                this.position += increment;
+                
+                this.path.push({
+                    x: time,
+                    y: this.position
+                });
+                
+                if (this.path.length > 600) {
+                    this.path.shift();
+                }
+                
+                return this.position;
+            }
+            
+            reset() {
+                this.position = 0;
+                this.path = [];
+            }
+        }
+        
+        // Initialize simulations
+        const randomWalks = scales.slice(0, 3).map((scale, index) => new RandomWalk(scale, index));
+        const brownianMotion = new BrownianMotion();
+        
+        function drawPath(ctx, path, color, canvasIndex) {
+            ctx.clearRect(0, 0, 600, 200);
+            
+            // Draw grid
+            ctx.strokeStyle = '#f0f0f0';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= 10; i++) {
+                const y = i * 20;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(600, y);
+                ctx.stroke();
+            }
+            
+            // Draw center line
+            ctx.strokeStyle = '#cccccc';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, 100);
+            ctx.lineTo(600, 100);
+            ctx.stroke();
+            
+            if (path.length < 2) return;
+            
+            // Draw path
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            const timeScale = 600 / Math.max(100, time);
+            
+            for (let i = 0; i < path.length; i++) {
+                const x = (path[i].x - Math.max(0, time - 100)) * timeScale;
+                const y = 100 - path[i].y * 30; // Scale and center
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+            
+            // Draw current position dot
+            if (path.length > 0) {
+                const lastPoint = path[path.length - 1];
+                const x = (lastPoint.x - Math.max(0, time - 100)) * timeScale;
+                const y = 100 - lastPoint.y * 30;
+                
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        function updatePositionDisplays() {
+            document.getElementById('pos1').textContent = 
+                randomWalks[0] ? randomWalks[0].position.toFixed(0) : '0';
+            document.getElementById('pos2').textContent = 
+                randomWalks[1] ? (randomWalks[1].position / Math.sqrt(10)).toFixed(2) : '0';
+            document.getElementById('pos3').textContent = 
+                randomWalks[2] ? (randomWalks[2].position / Math.sqrt(100)).toFixed(2) : '0';
+            document.getElementById('pos4').textContent = 
+                brownianMotion.position.toFixed(2);
+        }
+        
+        function animate() {
+            if (!isRunning) return;
+            
+            time += 0.1;
+            
+            // Update random walks
+            randomWalks.forEach((walk, index) => {
+                walk.step();
+                drawPath(contexts[index], walk.path, colors[index], index);
+            });
+            
+            // Update Brownian motion
+            brownianMotion.step(0.1);
+            drawPath(contexts[3], brownianMotion.path, colors[3], 3);
+            
+            updatePositionDisplays();
+            
+            requestAnimationFrame(animate);
+        }
+        
+        function toggleAnimation() {
+            isRunning = !isRunning;
+            if (isRunning) {
+                animate();
+            }
+        }
+        
+        function resetAnimation() {
+            time = 0;
+            randomWalks.forEach(walk => walk.reset());
+            brownianMotion.reset();
+            contexts.forEach(ctx => ctx.clearRect(0, 0, 600, 200));
+            updatePositionDisplays();
+        }
+        
+        function changeSpeed() {
+            speedIndex = (speedIndex + 1) % speedLabels.length;
+            animationSpeed = [0.3, 1, 3][speedIndex];
+            document.getElementById('speedLabel').textContent = speedLabels[speedIndex];
+        }
+        
+        // Start animation
+        animate();
+    </script>
+</body>
+</html>
